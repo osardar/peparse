@@ -148,6 +148,7 @@ pub struct ImageFileHeader {
 impl NewHeader for ImageFileHeader {}
 
 #[derive(Debug)]
+#[derive(Copy, Clone)]
 #[repr(C, packed)]
 pub struct ImageDataDirectory {
     pub VirtualAddress: u32,

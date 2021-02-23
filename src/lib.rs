@@ -5,6 +5,7 @@ use std::io::Read;
 use std::fs::File;
 use std::process;
 use std::mem;
+use std::str;
 
 use crate::pe::NewHeader;
 
@@ -36,12 +37,21 @@ pub fn parse(fdata: &mut [u8]) -> Option<u8> {
     offset += mem::size_of::<u32>(); // Skip past NtHeaders.Signature
     offset += mem::size_of::<pe::ImageFileHeader>();
 
+    enum ImgOptionalHeaderEnum {
+        Stub(pe::ImageOptionalHeaderStub),
+        PE32(pe::ImageOptionalHeader32),
+        PE64(pe::ImageOptionalHeader64),
+    }
+
+    let mut e_ImgOptionalHeader: ImgOptionalHeaderEnum = ImgOptionalHeaderEnum::Stub( unsafe { mem::zeroed() });
+
+
     let s_ImgOptionalHeader: pe::ImageOptionalHeaderStub = unsafe { mem::zeroed() };
     if s_ImgNtHeaders.OptionalHeaderStub.Magic == pe_const::IMAGE_NT_OPTIONAL_HDR32_MAGIC {
-        let s_ImgOptionalHeader: pe::ImageOptionalHeader32 = pe::ImageOptionalHeader32::new(&mut fdata[offset..]);
+        e_ImgOptionalHeader = ImgOptionalHeaderEnum::PE32(pe::ImageOptionalHeader32::new(&mut fdata[offset..]));
         offset += mem::size_of::<pe::ImageOptionalHeader32>();
     } else if s_ImgNtHeaders.OptionalHeaderStub.Magic == pe_const::IMAGE_NT_OPTIONAL_HDR64_MAGIC {
-        let s_ImgOptionalHeader: pe::ImageOptionalHeader64 = pe::ImageOptionalHeader64::new(&mut fdata[offset..]);
+        e_ImgOptionalHeader = ImgOptionalHeaderEnum::PE64(pe::ImageOptionalHeader64::new(&mut fdata[offset..]));
         offset += mem::size_of::<pe::ImageOptionalHeader64>();
     } else {
         println!("Unrecognized OptionalHeader.Magic (arch)");
@@ -54,10 +64,28 @@ pub fn parse(fdata: &mut [u8]) -> Option<u8> {
     println!("Offset: {:x}", offset);
     println!("Sizeof ImgNtHeaders: {:x}", mem::size_of::<pe::ImageNtHeaders>());
 
-    for i in 0..=n_sections {
-        let s_ImgSectionHeader: pe::ImageSectionHeader = pe::ImageSectionHeader::new(&mut fdata[offset..]);
-        println!("* Section Name: {:?}", s_ImgSectionHeader.Name);
+    // Dump section 
+    let mut v_ImgSectionHeaders: Vec<pe::ImageSectionHeader> = Vec::new();
+    for i in 0..n_sections as usize{
+        v_ImgSectionHeaders.push(pe::ImageSectionHeader::new(&mut fdata[offset..]));
+        println!("* Section Name: {:?}", str::from_utf8(&v_ImgSectionHeaders[i].Name));
         offset += mem::size_of::<pe::ImageSectionHeader>();
+    }
+
+    // Exports
+    let s_ImgDirEntryExport: pe::ImageDataDirectory = match e_ImgOptionalHeader {
+        ImgOptionalHeaderEnum::PE32(optheader32) => optheader32.DataDirectory[pe_const::IMAGE_DIRECTORY_ENTRY_EXPORT],
+        ImgOptionalHeaderEnum::PE64(optheader64) => optheader64.DataDirectory[pe_const::IMAGE_DIRECTORY_ENTRY_EXPORT],
+        ImgOptionalHeaderEnum::Stub(optstub) => {   
+            println!("Invalid OptHeader type");
+            process::exit(0);
+        }
+    };
+
+    if s_ImgDirEntryExport.VirtualAddress & s_ImgDirEntryExport.Size == 0 {
+        println!("No exports found");
+    } else {
+        println!("Exports found but not supported");
     }
 
     Some(0)
