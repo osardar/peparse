@@ -227,6 +227,41 @@ pub struct ImageThunkData32 {
 
 impl NewHeader for ImageThunkData32 {}
 
+#[repr(C, packed)]
+pub union ImageThunkData64U1 {
+    ForwarderString: u64,
+    Function: u64,
+    Ordinal: u64,
+    AddressOfData: u64,
+}
+
+#[repr(C, packed)]
+pub struct ImageThunkData64 {
+	u1: ImageThunkData64U1,
+}
+
+impl NewHeader for ImageThunkData64 {}
+
+#[repr(C, packed)]
+pub struct ImageImportByName {
+    Hint: u16,
+	Name: u8,
+}
+
+impl NewHeader for ImageImportByName {}
+
+#[repr(C, packed)]
+pub struct ImageResourceDirectory {
+    Characteristics: u32,
+    TimeDateStamp: u32,
+    MajorVersion: u16,
+    MinorVersion: u16,
+    NumberOfNamedEntries: u16,
+    NumberOfIdEntries: u16,
+}
+
+impl NewHeader for ImageResourceDirectory {}
+
 pub trait NewHeader {
     fn new<T>(fdata: &mut [u8]) -> T {
         let mut s: T = unsafe { mem::zeroed() };
