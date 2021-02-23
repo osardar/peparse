@@ -1,0 +1,7 @@
+pub const IMAGE_FILE_MACHINE_I386: usize = 0x014c;
+pub const IMAGE_FILE_MACHINE_IA64: usize = 0x0200;
+pub const IMAGE_FILE_MACHINE_AMD64: usize = 0x8664;
+
+pub const IMAGE_NT_OPTIONAL_HDR32_MAGIC: u16 = 0x10b;
+pub const IMAGE_NT_OPTIONAL_HDR64_MAGIC: u16 = 0x20b;
+pub const IMAGE_ROM_OPTIONAL_HDR_MAGIC: u16 = 0x107;
