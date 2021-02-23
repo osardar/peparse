@@ -178,6 +178,54 @@ pub struct ImageSectionHeader {
 
 impl NewHeader for ImageSectionHeader {}
 
+#[repr(C, packed)]
+pub struct ImageExportDirectory {
+    Characteristics: u32,
+    TimeDateStamp: u32,
+    MajorVersion: u16,
+    MinorVersion: u16,
+    Name: u32,
+    Base: u32,
+    NumberOfFunctions: u32,
+    NumberOfNames: u32,
+    AddressOfFunctions: u32,
+    AddressOfNames: u32,
+    AddressOfNameOrdinals: u32,
+}
+
+impl NewHeader for ImageExportDirectory {}
+
+#[repr(C, packed)]
+pub union ImageImportDescriptorU0 {
+    Characteristics: u32,
+    OriginalFirstThunk: u32,
+} 
+
+#[repr(C, packed)]
+pub struct ImageImportDescriptor {
+    u0: ImageImportDescriptorU0,
+	TimeDateStamp: u32,
+	ForwarderChain: u32,
+	Name: u32,
+	FirstThunk: u32,
+}
+
+impl NewHeader for ImageImportDescriptor {}
+
+#[repr(C, packed)]
+pub union ImageThunkData32U1 {
+    ForwarderString: u32,
+    Function: u32,
+    Ordinal: u32,
+    AddressOfData: u32,
+}
+
+#[repr(C, packed)]
+pub struct ImageThunkData32 {
+    u1: ImageThunkData32U1,
+}
+
+impl NewHeader for ImageThunkData32 {}
 
 pub trait NewHeader {
     fn new<T>(fdata: &mut [u8]) -> T {
