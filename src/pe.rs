@@ -179,19 +179,20 @@ pub struct ImageSectionHeader {
 
 impl NewHeader for ImageSectionHeader {}
 
+#[derive(Debug)]
 #[repr(C, packed)]
 pub struct ImageExportDirectory {
-    Characteristics: u32,
-    TimeDateStamp: u32,
-    MajorVersion: u16,
-    MinorVersion: u16,
-    Name: u32,
-    Base: u32,
-    NumberOfFunctions: u32,
-    NumberOfNames: u32,
-    AddressOfFunctions: u32,
-    AddressOfNames: u32,
-    AddressOfNameOrdinals: u32,
+    pub Characteristics: u32,
+    pub TimeDateStamp: u32,
+    pub MajorVersion: u16,
+    pub MinorVersion: u16,
+    pub Name: u32,
+    pub Base: u32,
+    pub NumberOfFunctions: u32,
+    pub NumberOfNames: u32,
+    pub AddressOfFunctions: u32,
+    pub AddressOfNames: u32,
+    pub AddressOfNameOrdinals: u32,
 }
 
 impl NewHeader for ImageExportDirectory {}

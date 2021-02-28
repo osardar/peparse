@@ -6,6 +6,7 @@ use std::fs::File;
 use std::process;
 use std::mem;
 use std::str;
+use std::ffi;
 
 use crate::pe::NewHeader;
 
@@ -64,7 +65,7 @@ pub fn parse(fdata: &mut [u8]) -> Option<u8> {
     println!("Offset: {:x}", offset);
     println!("Sizeof ImgNtHeaders: {:x}", mem::size_of::<pe::ImageNtHeaders>());
 
-    // Dump section 
+    // Dump sections
     let mut v_ImgSectionHeaders: Vec<pe::ImageSectionHeader> = Vec::new();
     for i in 0..n_sections as usize{
         v_ImgSectionHeaders.push(pe::ImageSectionHeader::new(&mut fdata[offset..]));
@@ -85,10 +86,39 @@ pub fn parse(fdata: &mut [u8]) -> Option<u8> {
     if s_ImgDirEntryExport.VirtualAddress & s_ImgDirEntryExport.Size == 0 {
         println!("No exports found");
     } else {
-        println!("Exports found but not supported");
+        let export_dir_foa = RvaToFileOffset(s_ImgDirEntryExport.VirtualAddress, &v_ImgSectionHeaders).unwrap();
+        let s_ImageExportDirectory: pe::ImageExportDirectory = pe::ImageExportDirectory::new(&mut fdata[export_dir_foa as usize..]);
+        println!("{:?}", s_ImageExportDirectory);
+
+        let fname_foa = RvaToFileOffset(s_ImageExportDirectory.Name, &v_ImgSectionHeaders).unwrap();
+        println!("Name FOA: {:x}", fname_foa);
+        println!("export_dir.Name: {:?}", std::ffi::CStr::from_bytes_with_nul(&fdata[fname_foa as usize..(fname_foa+13) as usize]));
+        
+        let fname = GetAsciiStr(&fdata[fname_foa as usize..]);
+        println!("str.fromutf8: {:?}", fname);        
     }
 
     Some(0)
+}
+
+fn GetAsciiStr(data: &[u8]) -> ffi::CString {
+    std::ffi::CString::new(&data[..])
+    .unwrap_or_else(|e|{
+        let nul_position = e.nul_position();
+        std::ffi::CString::new(&data[..nul_position]).unwrap()
+    })
+}
+
+fn RvaToFileOffset(rva: u32, v_section_headers: &Vec<pe::ImageSectionHeader>) -> Option<u32> {
+    for s_section_header in v_section_headers {
+        let section_va_start: u32 = s_section_header.VirtualAddress;
+        let section_va_end: u32 = s_section_header.VirtualAddress + s_section_header.SizeOfRawData;
+        if rva >= section_va_start && rva <= section_va_end {
+            return Some(rva - section_va_start + s_section_header.PointerToRawData); 
+        } 
+    }
+
+    return None;
 }
 
 #[cfg(test)]
