@@ -91,16 +91,14 @@ pub fn parse(fdata: &mut [u8]) -> Option<u8> {
         println!("{:?}", s_ImageExportDirectory);
 
         let fname_foa = RvaToFileOffset(s_ImageExportDirectory.Name, &v_ImgSectionHeaders).unwrap();
-        println!("Name FOA: {:x}", fname_foa);
-        println!("export_dir.Name: {:?}", std::ffi::CStr::from_bytes_with_nul(&fdata[fname_foa as usize..(fname_foa+13) as usize]));
-        
         let fname = GetAsciiStr(&fdata[fname_foa as usize..]);
-        println!("str.fromutf8: {:?}", fname);        
+        println!("ImageExportDir.Name: {:?}", fname);        
     }
 
     Some(0)
 }
 
+// Rely on the ffi::NulError type to identify the nul character index in a slice
 fn GetAsciiStr(data: &[u8]) -> ffi::CString {
     std::ffi::CString::new(&data[..])
     .unwrap_or_else(|e|{
