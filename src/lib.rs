@@ -39,6 +39,7 @@ pub fn parse(fdata: &mut [u8]) -> Option<u8> {
     offset += mem::size_of::<u32>(); // Skip past NtHeaders.Signature
     offset += mem::size_of::<pe::ImageFileHeader>();
 
+    #[derive(Copy, Clone)]
     enum ImgOptionalHeaderEnum {
         Stub(pe::ImageOptionalHeaderStub),
         PE32(pe::ImageOptionalHeader32),
@@ -100,6 +101,7 @@ pub fn parse(fdata: &mut [u8]) -> Option<u8> {
         println!("AddressOfNameOrdinals {:x}", RvaToFileOffset(s_ImageExportDirectory.AddressOfNameOrdinals, &v_ImgSectionHeaders).unwrap());
     
         let mut addr_export_names: usize = RvaToFileOffset(s_ImageExportDirectory.AddressOfNames, &v_ImgSectionHeaders).unwrap() as usize;
+
         for i in 0..s_ImageExportDirectory.NumberOfNames {
             let idx_start = addr_export_names + (4*i as usize); 
             let idx_end = idx_start + 4;
@@ -108,9 +110,37 @@ pub fn parse(fdata: &mut [u8]) -> Option<u8> {
             let export_name = GetAsciiStr(&fdata[foa_export_name as usize..]);
             println!("E[{:x}]: {:?}", i, export_name);
         }
-        
     }
 
+    // Imports
+    let s_ImgDirEntryImport: pe::ImageDataDirectory = match e_ImgOptionalHeader {
+        ImgOptionalHeaderEnum::PE32(optheader32) => optheader32.DataDirectory[pe_const::IMAGE_DIRECTORY_ENTRY_IMPORT],
+        ImgOptionalHeaderEnum::PE64(optheader64) => optheader64.DataDirectory[pe_const::IMAGE_DIRECTORY_ENTRY_IMPORT],
+        ImgOptionalHeaderEnum::Stub(optstub) => {
+            println!("Invalid OptHeader type");
+            process::exit(0);
+        }
+    };
+
+    if s_ImgDirEntryImport.VirtualAddress & s_ImgDirEntryImport.Size == 0 {
+        println!("No exports found");
+    } else {
+        let mut import_dir_foa = RvaToFileOffset(s_ImgDirEntryImport.VirtualAddress, &v_ImgSectionHeaders).unwrap();
+        let mut s_ImgImportDescriptor: pe::ImageImportDescriptor = pe::ImageImportDescriptor::new(&mut fdata[import_dir_foa as usize..]);
+        
+        unsafe {
+            while s_ImgImportDescriptor.u0.Characteristics != 0 {
+                let import_name_foa = RvaToFileOffset(s_ImgImportDescriptor.Name, &v_ImgSectionHeaders).unwrap();
+                println!("{:?}", GetAsciiStr(&fdata[import_name_foa as usize..]));
+    
+                import_dir_foa += mem::size_of::<pe::ImageImportDescriptor>() as u32;
+                s_ImgImportDescriptor = pe::ImageImportDescriptor::new(&mut fdata[import_dir_foa as usize..]);
+            }            
+        }
+
+        
+    }
+    
     Some(0)
 }
 

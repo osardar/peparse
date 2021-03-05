@@ -53,6 +53,7 @@ pub struct ImageNtHeaders {
 impl NewHeader for ImageNtHeaders {}
 
 #[derive(Debug)]
+#[derive(Copy, Clone)]
 #[repr(C, packed)]
 pub struct ImageOptionalHeader32 {
     pub Magic: u16,
@@ -91,6 +92,7 @@ pub struct ImageOptionalHeader32 {
 impl NewHeader for ImageOptionalHeader32 {}
 
 #[derive(Debug)]
+#[derive(Copy, Clone)]
 #[repr(C, packed)]
 pub struct ImageOptionalHeader64 {
     pub Magic: u16,
@@ -128,6 +130,7 @@ pub struct ImageOptionalHeader64 {
 impl NewHeader for ImageOptionalHeader64 {}
 
 #[derive(Debug)]
+#[derive(Copy, Clone)]
 #[repr(C, packed)]
 pub struct ImageOptionalHeaderStub {
     pub Magic: u16,
@@ -199,17 +202,17 @@ impl NewHeader for ImageExportDirectory {}
 
 #[repr(C, packed)]
 pub union ImageImportDescriptorU0 {
-    Characteristics: u32,
+    pub Characteristics: u32,
     OriginalFirstThunk: u32,
 } 
 
 #[repr(C, packed)]
 pub struct ImageImportDescriptor {
-    u0: ImageImportDescriptorU0,
-	TimeDateStamp: u32,
-	ForwarderChain: u32,
-	Name: u32,
-	FirstThunk: u32,
+    pub u0: ImageImportDescriptorU0,
+	pub TimeDateStamp: u32,
+	pub ForwarderChain: u32,
+	pub Name: u32,
+	pub FirstThunk: u32,
 }
 
 impl NewHeader for ImageImportDescriptor {}
