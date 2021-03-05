@@ -7,6 +7,7 @@ use std::process;
 use std::mem;
 use std::str;
 use std::ffi;
+use std::convert::TryInto;
 
 use crate::pe::NewHeader;
 
@@ -92,7 +93,22 @@ pub fn parse(fdata: &mut [u8]) -> Option<u8> {
 
         let fname_foa = RvaToFileOffset(s_ImageExportDirectory.Name, &v_ImgSectionHeaders).unwrap();
         let fname = GetAsciiStr(&fdata[fname_foa as usize..]);
-        println!("ImageExportDir.Name: {:?}", fname);        
+        println!("ImageExportDir.Name: {:?}", fname);   
+        
+        println!("AddressOfFunctions {:x}", RvaToFileOffset(s_ImageExportDirectory.AddressOfFunctions, &v_ImgSectionHeaders).unwrap());
+        println!("AddressOfNames {:x}", RvaToFileOffset(s_ImageExportDirectory.AddressOfNames, &v_ImgSectionHeaders).unwrap());
+        println!("AddressOfNameOrdinals {:x}", RvaToFileOffset(s_ImageExportDirectory.AddressOfNameOrdinals, &v_ImgSectionHeaders).unwrap());
+    
+        let mut addr_export_names: usize = RvaToFileOffset(s_ImageExportDirectory.AddressOfNames, &v_ImgSectionHeaders).unwrap() as usize;
+        for i in 0..s_ImageExportDirectory.NumberOfNames {
+            let idx_start = addr_export_names + (4*i as usize); 
+            let idx_end = idx_start + 4;
+            let tmp_name_rva = u32::from_le_bytes((fdata[idx_start..idx_end]).try_into().unwrap());
+            let foa_export_name = RvaToFileOffset(tmp_name_rva, &v_ImgSectionHeaders).unwrap() as usize;
+            let export_name = GetAsciiStr(&fdata[foa_export_name as usize..]);
+            println!("E[{:x}]: {:?}", i, export_name);
+        }
+        
     }
 
     Some(0)
@@ -110,10 +126,15 @@ fn GetAsciiStr(data: &[u8]) -> ffi::CString {
 fn RvaToFileOffset(rva: u32, v_section_headers: &Vec<pe::ImageSectionHeader>) -> Option<u32> {
     for s_section_header in v_section_headers {
         let section_va_start: u32 = s_section_header.VirtualAddress;
-        let section_va_end: u32 = s_section_header.VirtualAddress + s_section_header.SizeOfRawData;
+        let mut section_va_end: u32 = 0;
+        unsafe {
+            section_va_end = s_section_header.VirtualAddress + s_section_header.Misc.VirtualSize;
+        }
         if rva >= section_va_start && rva <= section_va_end {
+            // println!("{:x} FOUND in {:?}", rva, str::from_utf8(&s_section_header.Name));
             return Some(rva - section_va_start + s_section_header.PointerToRawData); 
         } 
+        // println!("{:x} not in {:?} {:x} - {:x}", rva, str::from_utf8(&s_section_header.Name), section_va_start, section_va_end);
     }
 
     return None;
