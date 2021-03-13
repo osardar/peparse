@@ -203,7 +203,7 @@ impl NewHeader for ImageExportDirectory {}
 #[repr(C, packed)]
 pub union ImageImportDescriptorU0 {
     pub Characteristics: u32,
-    OriginalFirstThunk: u32,
+    pub OriginalFirstThunk: u32,
 } 
 
 #[repr(C, packed)]
@@ -249,8 +249,8 @@ impl NewHeader for ImageThunkData64 {}
 
 #[repr(C, packed)]
 pub struct ImageImportByName {
-    Hint: u16,
-	Name: u8,
+    pub Hint: u16,
+	pub Name: u8,
 }
 
 impl NewHeader for ImageImportByName {}

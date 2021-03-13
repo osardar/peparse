@@ -102,14 +102,17 @@ pub fn parse(fdata: &mut [u8]) -> Option<u8> {
     
         let mut addr_export_names: usize = RvaToFileOffset(s_ImageExportDirectory.AddressOfNames, &v_ImgSectionHeaders).unwrap() as usize;
 
-        for i in 0..s_ImageExportDirectory.NumberOfNames {
-            let idx_start = addr_export_names + (4*i as usize); 
-            let idx_end = idx_start + 4;
-            let tmp_name_rva = u32::from_le_bytes((fdata[idx_start..idx_end]).try_into().unwrap());
-            let foa_export_name = RvaToFileOffset(tmp_name_rva, &v_ImgSectionHeaders).unwrap() as usize;
-            let export_name = GetAsciiStr(&fdata[foa_export_name as usize..]);
-            println!("E[{:x}]: {:?}", i, export_name);
+        if false {
+            for i in 0..s_ImageExportDirectory.NumberOfNames {
+                let idx_start = addr_export_names + (4*i as usize); 
+                let idx_end = idx_start + 4;
+                let tmp_name_rva = u32::from_le_bytes((fdata[idx_start..idx_end]).try_into().unwrap());
+                let foa_export_name = RvaToFileOffset(tmp_name_rva, &v_ImgSectionHeaders).unwrap() as usize;
+                let export_name = GetAsciiStr(&fdata[foa_export_name as usize..]);
+                println!("E[{:x}]: {:?}", i, export_name);
+            }
         }
+
     }
 
     // Imports
@@ -128,17 +131,32 @@ pub fn parse(fdata: &mut [u8]) -> Option<u8> {
         let mut import_dir_foa = RvaToFileOffset(s_ImgDirEntryImport.VirtualAddress, &v_ImgSectionHeaders).unwrap();
         let mut s_ImgImportDescriptor: pe::ImageImportDescriptor = pe::ImageImportDescriptor::new(&mut fdata[import_dir_foa as usize..]);
         
-        unsafe {
+        unsafe { // TODO seems too simple of a use case for a powerful construct
             while s_ImgImportDescriptor.u0.Characteristics != 0 {
                 let import_name_foa = RvaToFileOffset(s_ImgImportDescriptor.Name, &v_ImgSectionHeaders).unwrap();
                 println!("{:?}", GetAsciiStr(&fdata[import_name_foa as usize..]));
     
+                // Iterate import functions 
+                // Assuming by name and not ordinal for now
+
+                let mut thunk_foa_start = RvaToFileOffset(s_ImgImportDescriptor.u0.OriginalFirstThunk, &v_ImgSectionHeaders).unwrap();
+                
+                while(true) {
+                    let thunk_foa_end = thunk_foa_start + mem::size_of::<usize>() as u32;
+                    let image_import_by_name_rva = usize::from_le_bytes((fdata[thunk_foa_start as usize..thunk_foa_end as usize]).try_into().unwrap()); // IMAGE_THUNK_DATA is a usize union
+                    if(image_import_by_name_rva == 0 || (image_import_by_name_rva.reverse_bits() & 1) == 1) {
+                        break;
+                    }
+                    let image_import_by_name_foa = RvaToFileOffset(image_import_by_name_rva as u32, &v_ImgSectionHeaders).unwrap();            
+                    println!("- {:?}", GetAsciiStr(&fdata[(image_import_by_name_foa+2) as usize..]));
+                
+                    thunk_foa_start += mem::size_of::<usize>() as u32;
+                }
+
                 import_dir_foa += mem::size_of::<pe::ImageImportDescriptor>() as u32;
                 s_ImgImportDescriptor = pe::ImageImportDescriptor::new(&mut fdata[import_dir_foa as usize..]);
             }            
-        }
-
-        
+        }  
     }
     
     Some(0)
